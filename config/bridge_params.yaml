@@ -1,0 +1,13 @@
+carla_diff_drive_bridge:
+  ros__parameters:
+    carla_host: "localhost"
+    carla_port: 2000
+    actor_id: -1                    # -1 = auto-find by role_name
+    actor_role_name: "ego_robot"
+    control_rate: 20.0              # Hz
+    cmd_vel_topic: "/cmd_vel"
+    odom_topic: "/odom"
+    odom_frame: "odom"
+    base_frame: "base_link"
+    publish_tf: true
+    cmd_vel_timeout: 0.5            # seconds — zero velocity if no cmd_vel received
