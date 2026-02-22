@@ -21,10 +21,10 @@ def main():
                         help='role_name attribute (bridge uses this to find the actor)')
     parser.add_argument('--spawn-point', type=int, default=None,
                         help='Spawn point index (None = random)')
-    parser.add_argument('--disable-physics', action='store_true', default=True,
-                        help='Disable physics simulation (recommended for kinematic control)')
-    parser.add_argument('--enable-physics', action='store_true', default=False,
-                        help='Keep physics enabled')
+    parser.add_argument('--disable-physics', action='store_true', default=False,
+                        help='Disable physics simulation (pure kinematic, no collisions)')
+    parser.add_argument('--enable-physics', action='store_true', default=True,
+                        help='Keep physics enabled (default — enables collision detection)')
     args = parser.parse_args()
 
     client = carla.Client(args.host, args.port)
