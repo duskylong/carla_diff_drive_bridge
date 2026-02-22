@@ -197,20 +197,28 @@ class DiffDriveBridge(Node):
             )
 
         # ── Apply cmd_vel → CARLA kinematic control ─────────────────
+        # When physics is disabled, set_target_velocity has no effect.
+        # Instead, integrate velocity into a new transform each tick.
+        dt = 1.0 / self._control_rate
+
         # ROS linear.x = forward speed (m/s)
         v_linear = twist.linear.x
+        # ROS angular.z (rad/s, CCW+) → CARLA yaw (CW+)
+        omega_ros = twist.angular.z
 
-        # Project local forward velocity into CARLA world frame
-        vx_world = v_linear * math.cos(carla_yaw_rad)
-        vy_world = v_linear * math.sin(carla_yaw_rad)
+        # Integrate position in CARLA world frame
+        new_x = transform.location.x + v_linear * math.cos(carla_yaw_rad) * dt
+        new_y = transform.location.y + v_linear * math.sin(carla_yaw_rad) * dt
+        # Integrate yaw: ROS CCW+ → CARLA CW+, so subtract
+        new_yaw_deg = carla_yaw_deg - math.degrees(omega_ros) * dt
 
-        self._actor.set_target_velocity(carla.Vector3D(x=vx_world, y=vy_world, z=0.0))
-
-        # ROS angular.z (rad/s, CCW+) → CARLA angular Z (deg/s, CW+)
-        omega_carla_deg = -math.degrees(twist.angular.z)
-        self._actor.set_target_angular_velocity(
-            carla.Vector3D(x=0.0, y=0.0, z=omega_carla_deg)
+        new_transform = carla.Transform(
+            carla.Location(x=new_x, y=new_y, z=transform.location.z),
+            carla.Rotation(pitch=transform.rotation.pitch,
+                           yaw=new_yaw_deg,
+                           roll=transform.rotation.roll)
         )
+        self._actor.set_transform(new_transform)
 
         # ── Publish odometry ────────────────────────────────────────
         self._publish_odom(transform, twist)
@@ -270,11 +278,7 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        # Zero out velocity before shutdown
-        if node._actor and node._actor.is_alive:
-            node._actor.set_target_velocity(carla.Vector3D(0, 0, 0))
-            node._actor.set_target_angular_velocity(carla.Vector3D(0, 0, 0))
-            node.get_logger().info('Zeroed actor velocity on shutdown.')
+        # Nothing to zero — kinematic control via set_transform stops immediately
         node.destroy_node()
         rclpy.shutdown()
 
